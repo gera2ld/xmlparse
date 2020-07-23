@@ -1,8 +1,8 @@
 # @gera2ld/xmlparse
 
-![NPM](https://img.shields.io/npm/v/xmlparse.svg)
-![License](https://img.shields.io/npm/l/xmlparse.svg)
-![Downloads](https://img.shields.io/npm/dt/xmlparse.svg)
+![NPM](https://img.shields.io/npm/v/@gera2ld/xmlparse.svg)
+![License](https://img.shields.io/npm/l/@gera2ld/xmlparse.svg)
+![Downloads](https://img.shields.io/npm/dt/@gera2ld/xmlparse.svg)
 
 Simple XML parser that works for browser, Node.js and Deno.
 
