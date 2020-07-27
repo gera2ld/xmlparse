@@ -67,8 +67,8 @@ export function reprStr(input: string, offset: number, message?: string): IError
   const start = Math.max(0, col - 40);
   const end = Math.min(col + 40, lines[line].length);
   return {
-    line,
-    col,
+    line: line + 1,
+    col: col + 1,
     message,
     content: [
       (start > 0 ? '...' : '') + lines[line].slice(start, end),
