@@ -149,7 +149,8 @@ function scanTag(input: string, offset: number): {
       if (quote) {
         assert(input[nextSep] === quote, () => reprStr(input, nextSep));
         nextSep += 1;
-        assert(WHITE_SPACE_OR_TAG_END.includes(input[nextSep]), () => reprStr(input, nextSep));
+        // White space after quotes can be omitted
+        // assert(WHITE_SPACE_OR_TAG_END.includes(input[nextSep]), () => reprStr(input, nextSep));
       }
       attrPos.end = nextSep - 1;
       let value = input.slice(sep + 1, nextSep);
@@ -189,7 +190,7 @@ export function parseXml(input: string): {
   while (offset < input.length) {
     const tagStart = findNext(input, '<', offset);
     const value = input.slice(offset, tagStart).trim();
-    const current = stack[stack.length - 1];
+    let current = stack[stack.length - 1];
     if (value) current.children?.push({ type: 'text', value });
     if (tagStart >= input.length) break;
     const {
@@ -211,18 +212,28 @@ export function parseXml(input: string): {
       children: [],
     };
     if (isClose) {
-      assert(current.name === name, () => reprStr(input, tagStart));
-      current.posClose = position;
-      stack.pop();
+      while (current.posOpen && current.name !== name) {
+        warnings.push(reprStr(input, current.posOpen?.start, `Unclosed tag: ${current.name}`));
+        stack.pop();
+        current = stack[stack.length - 1];
+      }
+      if (current.name !== name) {
+        warnings.push(reprStr(input, position.start, `Unmatched tag: ${name}`));
+      } else {
+        current.posClose = position;
+        stack.pop();
+      }
     } else {
       assert(current.children);
-      current.posOpen = position;
+      node.posOpen = position;
       current.children?.push(node);
       if (!isClosed) stack.push(node);
     }
     offset = position.end + 1;
   }
-  assert(stack.length === 1);
+  if (stack.length > 1) {
+    warnings.push(reprStr(input, offset, `Unclosed tag: ${stack[stack.length - 1].name}`));
+  }
   return {
     node: stack[0],
     warnings,
