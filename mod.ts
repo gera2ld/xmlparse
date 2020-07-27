@@ -212,9 +212,11 @@ export function parseXml(input: string): {
     };
     if (isClose) {
       assert(current.name === name, () => reprStr(input, tagStart));
+      current.posClose = position;
       stack.pop();
     } else {
       assert(current.children);
+      current.posOpen = position;
       current.children?.push(node);
       if (!isClosed) stack.push(node);
     }
