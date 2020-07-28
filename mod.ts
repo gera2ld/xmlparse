@@ -31,10 +31,9 @@ export interface ITag {
 }
 
 export interface IError {
-  line?: number;
-  col?: number;
+  input: string;
+  offset: number;
   message?: string;
-  content?: string;
 }
 
 const WHITE_SPACE = ' \t\r\n';
@@ -56,27 +55,6 @@ function assert(value: any, callback?: () => IError): void {
   }
 }
 
-export function reprStr(input: string, offset: number, message?: string): IError {
-  const lines = input.split('\n');
-  let line = 0;
-  let col = offset;
-  while (line < lines.length && col > lines[line].length) {
-    col -= lines[line].length + 1;
-    line += 1;
-  }
-  const start = Math.max(0, col - 40);
-  const end = Math.min(col + 40, lines[line].length);
-  return {
-    line: line + 1,
-    col: col + 1,
-    message,
-    content: [
-      (start > 0 ? '...' : '') + lines[line].slice(start, end),
-      ' '.repeat(start > 0 ? col - start + 3 : col) + '^',
-    ].join('\n'),
-  };
-}
-
 function findNext(input: string, chars: string, offset = 0, offsetEnd = -1): number {
   if (offsetEnd < 0) offsetEnd = input.length;
   let index = offset;
@@ -90,7 +68,7 @@ function scanTag(input: string, offset: number): {
   warnings: IError[];
 } {
   const warnings: IError[] = [];
-  assert(input[offset] === '<', () => reprStr(input, offset));
+  assert(input[offset] === '<', () => ({ input, offset }));
   const attrs: IAttributes = {};
   const tag: ITag = {
     name: '',
@@ -134,20 +112,20 @@ function scanTag(input: string, offset: number): {
     };
     const key = input.slice(sep, nextSep);
     if (key in attrs) {
-      warnings.push(reprStr(input, nextSep, `Duplicate key: ${key}`));
+      warnings.push({ input, offset: nextSep, message: `Duplicate key: ${key}` });
     }
     if (input[nextSep] === '=') {
       sep = nextSep;
       nextSep = sep + 1;
       const firstChar = input[nextSep];
-      let quote;
+      let quote: string | undefined;
       if ('\'"'.includes(firstChar)) {
         quote = firstChar;
         nextSep += 1;
       }
       nextSep = findNext(input, quote || WHITE_SPACE_OR_TAG_END, nextSep);
       if (quote) {
-        assert(input[nextSep] === quote, () => reprStr(input, nextSep));
+        assert(input[nextSep] === quote, () => ({ input, offset: nextSep }));
         nextSep += 1;
         // White space after quotes can be omitted
         // assert(WHITE_SPACE_OR_TAG_END.includes(input[nextSep]), () => reprStr(input, nextSep));
@@ -213,12 +191,12 @@ export function parseXml(input: string): {
     };
     if (isClose) {
       while (current.posOpen && current.name !== name) {
-        warnings.push(reprStr(input, current.posOpen?.start, `Unclosed tag: ${current.name}`));
+        warnings.push({ input, offset: current.posOpen?.start, message: `Unclosed tag: ${current.name}` });
         stack.pop();
         current = stack[stack.length - 1];
       }
       if (current.name !== name) {
-        warnings.push(reprStr(input, position.start, `Unmatched tag: ${name}`));
+        warnings.push({ input, offset: position.start, message: `Unmatched tag: ${name}` });
       } else {
         current.posClose = position;
         stack.pop();
@@ -232,7 +210,7 @@ export function parseXml(input: string): {
     offset = position.end + 1;
   }
   if (stack.length > 1) {
-    warnings.push(reprStr(input, offset, `Unclosed tag: ${stack[stack.length - 1].name}`));
+    warnings.push({ input, offset, message: `Unclosed tag: ${stack[stack.length - 1].name}` });
   }
   return {
     node: stack[0],
